@@ -10,26 +10,30 @@ intents.message_content = True
 client = discord.Client(intents=intents)
 BASENAME = 'https://skinbaron.de/fr/'
 wanted_categories = [
-        {'name' : 'Couteau', 'link' : BASENAME + 'csgo/Knife?sort=BP', 'plb': 0.3, 'pub': 300},
-        {'name' : 'Gants', 'link' : BASENAME + 'csgo/Gloves?sort=BP', 'plb': 0.3, 'pub': 400},
-        {'name' : 'AK47', 'link' : BASENAME + 'csgo/Rifle/AK-47?sort=BP', 'plb': 1, 'pub': 75},
-        #{'name' : 'USP-S', 'link' : BASENAME + 'csgo/Pistol/USP-S?sort=BP', 'plb': 1, 'pub': 50},
-        #{'name' : 'Glock', 'link' : BASENAME + 'csgo/Pistol/Glock-18?sort=BP', 'plb': 1, 'pub': 30},
-        {'name' : 'P250', 'link' : BASENAME + 'csgo/Pistol/P250?sort=BP', 'plb': 1, 'pub': 30},
+        {'name' : 'Couteau', 'link' : BASENAME + 'csgo/Knife', 'plb': 0.3, 'pub': 300},
+        {'name' : 'Gants', 'link' : BASENAME + 'csgo/Gloves', 'plb': 0.3, 'pub': 400},
+        {'name' : 'AK47', 'link' : BASENAME + 'csgo/Rifle/AK-47', 'plb': 1, 'pub': 75},
+        #{'name' : 'USP-S', 'link' : BASENAME + 'csgo/Pistol/USP-S', 'plb': 1, 'pub': 50},
+        #{'name' : 'Glock', 'link' : BASENAME + 'csgo/Pistol/Glock-18', 'plb': 1, 'pub': 30},
+        {'name' : 'P250', 'link' : BASENAME + 'csgo/Pistol/P250', 'plb': 1, 'pub': 30},
                      ]
 
 async def get_current_best_deal(url, category):
     elem_global = BeautifulSoup(requests.get(url).content, 'html.parser')
-    best_item = {
-            'type': elem_global.find_all(class_='product-box')[0].find_all(class_='offer-info')[0].find_all('span')[0].string,
-            'skin': elem_global.find_all(class_='product-box')[0].find_all(class_='offer-info')[0].find_all('span')[1].string,
-            'wear': elem_global.find_all(class_='product-box')[0].find_all(class_='wear-wrapper')[0].find_all('span')[0].text,
-            'img': elem_global.find_all(class_='product-box')[0].find_all('img')[0]['src'],
-            'price': elem_global.find_all(class_='product-box')[0].find_all(class_='price item')[0].string,
-            'reduction': elem_global.find_all(class_='product-box')[0].find_all(class_='pricereduction')[0].string,
-            'link': BASENAME + re.findall(r'(offers\/show\?offerUuid=[-&a-f0-9]*)&a;', elem_global.find_all('script', id='skinbaron-frontend-state')[0].string)[0],
-            'category': category,
-            }
+    current_product = elem_global.find_all(class_='product-box')[0]
+    try:
+        best_item = {
+                'type': current_product.find_all(class_='offer-info')[0].find_all('span')[0].string,
+                'skin': current_product.find_all(class_='offer-info')[0].find_all('span')[1].string,
+                'wear': current_product.find_all(class_='wear-wrapper')[0].find_all('span')[0].text,
+                'img': current_product.find_all('img')[0]['src'],
+                'price': current_product.find_all(class_='price item')[0].string,
+                'reduction': current_product.find_all(class_='pricereduction')[0].string,
+                'link': BASENAME + re.findall(r'(offers\/show\?offerUuid=[-&a-f0-9]*)&a;', elem_global.find_all('script', id='skinbaron-frontend-state')[0].string)[0],
+                'category': category,
+                }
+    except:
+        return None
     return best_item
 
 async def send_Item(item, channel):
@@ -46,10 +50,11 @@ async def on_ready():
     channel = client.get_channel(int(os.environ.get('DISCORD_CHANNEL')))
     for item in wanted_categories:
         best_item = await best_task[item['name']]
-        await send_Item(best_item, channel)
+        if best_item:
+            await send_Item(best_item, channel)
     await client.close()
 best_task = {}
 for item in wanted_categories:
-    URL = item['link'] + '?plb=' + str(item['plb']) + '&pub=' + str(item['pub']) + '&sort=PB'
+    URL = item['link'] + '?plb=' + str(item['plb']) + '&pub=' + str(item['pub']) + '&sort=BP'
     best_task[item['name']] = get_current_best_deal(URL, {'name': item['name'], 'higher': item['pub'], 'lower': item['plb']})
 client.run(os.environ.get('DISCORD_KEY'))
